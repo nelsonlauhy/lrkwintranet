@@ -14,6 +14,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      position: relative;
     }
     .profile-icon {
       width: 36px;
@@ -26,6 +27,11 @@
       align-items: center;
       font-weight: bold;
       font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .dropdown-menu-end {
+      right: 0;
+      left: auto;
     }
   </style>
 </head>
@@ -48,9 +54,13 @@
         </li>
       </ul>
     </div>
-    <div class="ms-auto navbar-profile">
+    <div class="ms-auto navbar-profile dropdown">
       <span id="userFullName"></span>
-      <div id="profileIcon" class="profile-icon"></div>
+      <div id="profileIcon" class="profile-icon dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"></div>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#profileModal">Profile</a></li>
+        <li><a class="dropdown-item" href="#" onclick="signOut()">Sign Out</a></li>
+      </ul>
     </div>
   </nav>
 
@@ -58,13 +68,70 @@
     <h3>Welcome</h3>
   </div>
 
-  <script>
-    const userData = JSON.parse(sessionStorage.getItem("user"));
-    if (!userData) window.location.href = "index.html";
+  <!-- Profile Modal -->
+  <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="profileModalLabel">User Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div id="modalInitials"
+               class="rounded-circle bg-secondary text-white mx-auto mb-3 d-flex align-items-center justify-content-center fw-bold"
+               style="width: 60px; height: 60px; font-size: 1.2rem;">
+          </div>
+          <div class="d-flex justify-content-center">
+            <table class="table table-borderless w-auto text-start">
+              <tbody>
+                <tr>
+                  <th scope="row">First Name</th>
+                  <td id="modalFirstName"></td>
+                </tr>
+                <tr>
+                  <th scope="row">Last Name</th>
+                  <td id="modalLastName"></td>
+                </tr>
+                <tr>
+                  <th scope="row">Email</th>
+                  <td id="modalEmail"></td>
+                </tr>
+                <tr>
+                  <th scope="row">Job Title</th>
+                  <td id="modalJobTitle"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    document.getElementById("userFullName").innerText = userData.name || "User";
-    const initials = userData.name ? userData.name.split(' ').map(w => w[0]).join('').toUpperCase() : "U";
-    document.getElementById("profileIcon").innerText = initials;
+  <script src="https://alcdn.msauth.net/browser/2.31.0/js/msal-browser.min.js"></script>
+  <script src="msalconfig.js"></script>
+  <script>
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    const userData = JSON.parse(sessionStorage.getItem("user"));
+
+    if (!userData) {
+      document.querySelector(".container").innerHTML = "<h3>Please sign in from the homepage.</h3>";
+    } else {
+      document.getElementById("userFullName").innerText = userData.name || "User";
+      const initials = userData.name ? userData.name.split(' ').map(w => w[0]).join('').toUpperCase() : "U";
+      document.getElementById("profileIcon").innerText = initials;
+      document.getElementById("modalInitials").innerText = initials;
+      document.getElementById("modalFirstName").innerText = userData.firstName || "";
+      document.getElementById("modalLastName").innerText = userData.lastName || "";
+      document.getElementById("modalEmail").innerText = userData.email || "";
+      document.getElementById("modalJobTitle").innerText = userData.jobTitle || "";
+    }
+
+    function signOut() {
+      sessionStorage.clear();
+      msalInstance.logoutRedirect();
+    }
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
