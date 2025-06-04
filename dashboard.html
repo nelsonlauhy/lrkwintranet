@@ -101,8 +101,15 @@
   <script src="https://alcdn.msauth.net/browser/2.31.0/js/msal-browser.min.js"></script>
   <script src="msalconfig.js"></script>
   <script>
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-    const userData = JSON.parse(sessionStorage.getItem("user"));
+    const msalInstance = new msal.PublicClientApplication({
+      ...msalConfig,
+      cache: {
+        cacheLocation: "localStorage",
+        storeAuthStateInCookie: false
+      }
+    });
+
+    const userData = JSON.parse(localStorage.getItem("user"));
 
     if (!userData) {
       document.querySelector(".container").innerHTML = "<h3>Please sign in from the homepage.</h3>";
@@ -117,7 +124,7 @@
     }
 
     function signOut() {
-      sessionStorage.clear();
+      localStorage.clear();
       msalInstance.logoutRedirect();
     }
   </script>
