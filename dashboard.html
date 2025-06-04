@@ -16,18 +16,8 @@
       gap: 10px;
       position: relative;
     }
-    .profile-icon {
-      width: 36px;
-      height: 36px;
-      background-color: #6c757d;
-      color: white;
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-weight: bold;
-      font-size: 0.9rem;
-      cursor: pointer;
+    .dropdown-toggle::after {
+      margin-left: 6px;
     }
     .dropdown-menu-end {
       right: 0;
@@ -55,10 +45,10 @@
       </ul>
     </div>
     <div class="ms-auto navbar-profile dropdown">
-      <span id="userFullName"></span>
-      <div id="profileIcon" class="profile-icon dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"></div>
+      <span id="userFullName" class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"></span>
       <ul class="dropdown-menu dropdown-menu-end">
         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#profileModal">Profile</a></li>
+        <li><hr class="dropdown-divider"></li>
         <li><a class="dropdown-item" href="#" onclick="signOut()">Sign Out</a></li>
       </ul>
     </div>
@@ -119,7 +109,6 @@
     } else {
       document.getElementById("userFullName").innerText = userData.name || "User";
       const initials = userData.name ? userData.name.split(' ').map(w => w[0]).join('').toUpperCase() : "U";
-      document.getElementById("profileIcon").innerText = initials;
       document.getElementById("modalInitials").innerText = initials;
       document.getElementById("modalFirstName").innerText = userData.firstName || "";
       document.getElementById("modalLastName").innerText = userData.lastName || "";
