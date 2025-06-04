@@ -54,8 +54,8 @@
     </div>
   </nav>
 
-  <div class="container mt-5">
-    <h3>Welcome</h3>
+  <div class="container mt-5" id="contentArea">
+    <h3>Loading...</h3>
   </div>
 
   <!-- Profile Modal -->
@@ -109,11 +109,18 @@
       }
     });
 
-    const userData = JSON.parse(localStorage.getItem("user"));
+    function loadUserData(attempt = 0) {
+      const raw = localStorage.getItem("user");
+      if (!raw) {
+        if (attempt < 10) {
+          setTimeout(() => loadUserData(attempt + 1), 300);
+        } else {
+          document.getElementById("contentArea").innerHTML = "<h3>Please sign in from the homepage.</h3>";
+        }
+        return;
+      }
 
-    if (!userData) {
-      document.querySelector(".container").innerHTML = "<h3>Please sign in from the homepage.</h3>";
-    } else {
+      const userData = JSON.parse(raw);
       document.getElementById("userFullName").innerText = userData.name || "User";
       const initials = userData.name ? userData.name.split(' ').map(w => w[0]).join('').toUpperCase() : "U";
       document.getElementById("modalInitials").innerText = initials;
@@ -121,12 +128,15 @@
       document.getElementById("modalLastName").innerText = userData.lastName || "";
       document.getElementById("modalEmail").innerText = userData.email || "";
       document.getElementById("modalJobTitle").innerText = userData.jobTitle || "";
+      document.getElementById("contentArea").innerHTML = "<h3>Welcome</h3>";
     }
 
     function signOut() {
       localStorage.clear();
       msalInstance.logoutRedirect();
     }
+
+    loadUserData();
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
