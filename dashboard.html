@@ -98,6 +98,7 @@
     </div>
   </div>
 
+  <!-- MSAL and Script -->
   <script src="https://alcdn.msauth.net/browser/2.31.0/js/msal-browser.min.js"></script>
   <script src="msalconfig.js"></script>
   <script>
@@ -122,6 +123,7 @@
 
       const userData = JSON.parse(raw);
       document.getElementById("userFullName").innerText = userData.name || "User";
+
       const initials = userData.name ? userData.name.split(' ').map(w => w[0]).join('').toUpperCase() : "U";
       document.getElementById("modalInitials").innerText = initials;
       document.getElementById("modalFirstName").innerText = userData.firstName || "";
