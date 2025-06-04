@@ -59,12 +59,33 @@
   </div>
 
   <script>
-    const userData = JSON.parse(sessionStorage.getItem("user"));
-    if (!userData) window.location.href = "index.html";
 
-    document.getElementById("userFullName").innerText = userData.name || "User";
-    const initials = userData.name ? userData.name.split(' ').map(w => w[0]).join('').toUpperCase() : "U";
-    document.getElementById("profileIcon").innerText = initials;
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    // This handles the login redirect flow
+    msalInstance.handleRedirectPromise().then((response) => {
+        const account = response?.account || msalInstance.getAllAccounts()[0];
+        if (account) {
+        msalInstance.setActiveAccount(account);
+        msalInstance.acquireTokenSilent({ scopes: ["User.Read"] }).then(tokenResponse => {
+            sessionStorage.setItem("user", JSON.stringify({
+            username: account.username,
+            name: account.name,
+            token: tokenResponse.accessToken
+            }));
+            window.location.href = "dashboard.html";
+        }).catch(() => {
+            msalInstance.loginRedirect({ scopes: ["User.Read"] });
+        });
+        }
+    });
+
+    // Handle Sign-in button click
+    document.getElementById("signinButton").addEventListener("click", () => {
+        msalInstance.loginRedirect({ scopes: ["User.Read"] });
+    });
+
+
   </script>
 </body>
 </html>
