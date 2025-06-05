@@ -65,11 +65,11 @@
         document.body.appendChild(script);
       });
 
-    const db = firebase.firestore();
+    const firestore = firebase.firestore();
     let currentRoom = '';
 
     function loadRooms() {
-      db.collection("meetingroomlist").orderBy("displayorder").get().then(snapshot => {
+      firestore.collection("meetingroomlist").orderBy("displayorder").get().then(snapshot => {
         const roomList = document.getElementById("roomList");
         roomList.innerHTML = '';
         snapshot.forEach(doc => {
@@ -90,7 +90,7 @@
     }
 
     function loadEvents() {
-      db.collection("roomevent").where("roomName", "==", currentRoom).get().then(snapshot => {
+      firestore.collection("roomevent").where("roomName", "==", currentRoom).get().then(snapshot => {
         const events = snapshot.docs.map(doc => {
           const d = doc.data();
           return {
