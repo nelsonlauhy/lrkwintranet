@@ -128,34 +128,50 @@
     const roomColorMap = {};
 
     async function getRoomEvents(room) {
-      let query = firestore.collection("roomevent").orderBy("start");
-      if (room !== "All Rooms") {
+    console.log("[getRoomEvents] Fetching events for:", room);
+    let query = firestore.collection("roomevent").orderBy("start");
+    if (room !== "All Rooms") {
         query = query.where("roomName", "==", room);
-      }
-      const snapshot = await query.get();
-      return snapshot.docs.map(doc => {
+    }
+
+    try {
+        const snapshot = await query.get();
+        console.log(`[getRoomEvents] Documents found: ${snapshot.size}`);
+        const results = snapshot.docs.map(doc => {
         const data = doc.data();
+        console.log("[getRoomEvents] Event Data:", data); // log raw data
         return {
-          id: doc.id,
-          title: data.title,
-          start: data.start.toDate(),
-          end: data.end.toDate(),
-          color: roomColorMap[data.roomName] || "#999",
-          extendedProps: {
+            id: doc.id,
+            title: data.title || "(no title)",
+            start: data.start?.toDate?.() || new Date(data.start),
+            end: data.end?.toDate?.() || new Date(data.end),
+            color: roomColorMap[data.roomName] || "#999",
+            extendedProps: {
             roomName: data.roomName || "",
             companyCode: data.companyCode || "",
             eventDescription: data.eventDescription || "",
             createdByEmail: data.createdByEmail || ""
-          }
+            }
         };
-      });
+        });
+        return results;
+    } catch (error) {
+        console.error("[getRoomEvents] ERROR:", error);
+        return [];
+    }
     }
 
     async function loadEvents() {
-      const events = await getRoomEvents(currentRoom);
-      calendar.removeAllEvents();
-      calendar.addEventSource(events);
+        console.log("[loadEvents] Current selected room:", currentRoom);
+        const events = await getRoomEvents(currentRoom);
+        console.log(`[loadEvents] Events to add: ${events.length}`);
+        if (events.length > 0) {
+            console.log("[loadEvents] First event:", events[0]);
+        }
+        calendar.removeAllEvents();
+        calendar.addEventSource(events);
     }
+
 
     function loadRooms() {
       const roomList = document.getElementById("roomList");
