@@ -20,7 +20,7 @@ function loadUserProfile(token) {
     setTextIfExists("profileFirstName", firstName);
     setTextIfExists("profileLastName", lastName);
     setTextIfExists("profileEmail", email);
-    setTextIfExists("profileJobTitle", jobTitle);  // Safe even if jobTitle field is removed
+    setTextIfExists("profileJobTitle", jobTitle); // safe if not in modal
 
     // Now query Firebase using email
     db.collection("companydirectory").where("Email", "==", email).get()
@@ -35,9 +35,7 @@ function loadUserProfile(token) {
         setTextIfExists("profileExt", data.Ext);
         setTextIfExists("profileDirectTel", data.DirectTel);
         setTextIfExists("profilePersonalTel", data.PersonalTel);
-        setTextIfExists("profileCompanyCode", data.companyCode);
         setTextIfExists("profileTitle", data.Title);
-        setTextIfExists("profileOfficeName", data.OfficeName);
         setTextIfExists("profileCompany", data.Company);
       })
       .catch(err => console.error("Error retrieving Firebase data:", err));
@@ -45,7 +43,6 @@ function loadUserProfile(token) {
   .catch(err => console.error("Error retrieving Microsoft Graph profile:", err));
 }
 
-// Utility function to avoid null reference errors
 function setTextIfExists(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value || "";
