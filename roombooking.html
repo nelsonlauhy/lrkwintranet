@@ -125,6 +125,37 @@
 
     const firestore = firebase.firestore();
     let currentRoom = 'All Rooms';
+    const roomColorMap = {};
+
+    async function getRoomEvents(room) {
+      let query = firestore.collection("roomevent").orderBy("start");
+      if (room !== "All Rooms") {
+        query = query.where("roomName", "==", room);
+      }
+      const snapshot = await query.get();
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title,
+          start: data.start.toDate(),
+          end: data.end.toDate(),
+          color: roomColorMap[data.roomName] || "#999",
+          extendedProps: {
+            roomName: data.roomName || "",
+            companyCode: data.companyCode || "",
+            eventDescription: data.eventDescription || "",
+            createdByEmail: data.createdByEmail || ""
+          }
+        };
+      });
+    }
+
+    async function loadEvents() {
+      const events = await getRoomEvents(currentRoom);
+      calendar.removeAllEvents();
+      calendar.addEventSource(events);
+    }
 
     function loadRooms() {
       const roomList = document.getElementById("roomList");
@@ -143,14 +174,16 @@
 
       firestore.collection("meetingroomlist").orderBy("displayorder").get().then(snapshot => {
         snapshot.forEach((doc) => {
+          const name = doc.data().name;
+          roomColorMap[name] = '#999';
           const li = document.createElement("li");
           li.className = "list-group-item room-item";
           li.setAttribute("tabindex", "0");
-          li.textContent = doc.data().name;
+          li.textContent = name;
           li.onclick = (e) => {
             e.preventDefault();
             li.blur();
-            selectRoom(doc.data().name);
+            selectRoom(name);
           };
           roomList.appendChild(li);
         });
@@ -164,28 +197,6 @@
       [...document.querySelectorAll(".room-item")].find(el => el.textContent === roomName)?.classList.add("active");
       loadEvents();
     }
-
-    function loadEvents() {
-        if (!currentRoom) return;
-        let query = firestore.collection("roomevent");
-        if (currentRoom !== "All Rooms") {
-            query = query.where("roomName", "==", currentRoom);
-        }
-        query.get().then(snapshot => {
-            const events = snapshot.docs.map(doc => {
-            const d = doc.data();
-            return {
-                title: d.title,
-                start: d.start?.toDate?.() || new Date(d.start),
-                end: d.end?.toDate?.() || new Date(d.end),
-                description: d.eventDescription
-            };
-            });
-            calendar.removeAllEvents();
-            calendar.addEventSource(events);
-        });
-        }
-
 
     document.addEventListener('DOMContentLoaded', function() {
       const calendarEl = document.getElementById('calendar');
