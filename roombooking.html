@@ -82,6 +82,10 @@
     .fc .fc-daygrid-day-number {
       color: #6c757d;
     }
+    .fc-event {
+      color: #fff !important;
+      font-weight: normal !important;
+    }
   </style>
 </head>
 <body>
@@ -148,7 +152,8 @@
           title: data.title || "(no title)",
           start: data.start?.toDate?.() || new Date(data.start),
           end: data.end?.toDate?.() || new Date(data.end),
-          color: roomColorMap[data.roomName] || "#999",
+          backgroundColor: roomColorMap[data.roomName] || "#999",
+          textColor: "#fff",
           extendedProps: {
             roomName: data.roomName || "",
             companyCode: data.companyCode || "",
