@@ -26,6 +26,14 @@
       border-bottom: 1px solid #ced4da;
       user-select: none;
       outline: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .room-color-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
     }
     .room-item:hover {
       background-color: #e9ecef;
@@ -128,50 +136,34 @@
     const roomColorMap = {};
 
     async function getRoomEvents(room) {
-    console.log("[getRoomEvents] Fetching events for:", room);
-    let query = firestore.collection("roomevents").orderBy("start");
-    if (room !== "All Rooms") {
+      let query = firestore.collection("roomevents").orderBy("start");
+      if (room !== "All Rooms") {
         query = query.where("roomName", "==", room);
-    }
-
-    try {
-        const snapshot = await query.get();
-        console.log(`[getRoomEvents] Documents found: ${snapshot.size}`);
-        const results = snapshot.docs.map(doc => {
+      }
+      const snapshot = await query.get();
+      return snapshot.docs.map(doc => {
         const data = doc.data();
-        console.log("[getRoomEvents] Event Data:", data); // log raw data
         return {
-            id: doc.id,
-            title: data.title || "(no title)",
-            start: data.start?.toDate?.() || new Date(data.start),
-            end: data.end?.toDate?.() || new Date(data.end),
-            color: roomColorMap[data.roomName] || "#999",
-            extendedProps: {
+          id: doc.id,
+          title: data.title || "(no title)",
+          start: data.start?.toDate?.() || new Date(data.start),
+          end: data.end?.toDate?.() || new Date(data.end),
+          color: roomColorMap[data.roomName] || "#999",
+          extendedProps: {
             roomName: data.roomName || "",
             companyCode: data.companyCode || "",
             eventDescription: data.eventDescription || "",
             createdByEmail: data.createdByEmail || ""
-            }
+          }
         };
-        });
-        return results;
-    } catch (error) {
-        console.error("[getRoomEvents] ERROR:", error);
-        return [];
-    }
+      });
     }
 
     async function loadEvents() {
-        console.log("[loadEvents] Current selected room:", currentRoom);
-        const events = await getRoomEvents(currentRoom);
-        console.log(`[loadEvents] Events to add: ${events.length}`);
-        if (events.length > 0) {
-            console.log("[loadEvents] First event:", events[0]);
-        }
-        calendar.removeAllEvents();
-        calendar.addEventSource(events);
+      const events = await getRoomEvents(currentRoom);
+      calendar.removeAllEvents();
+      calendar.addEventSource(events);
     }
-
 
     function loadRooms() {
       const roomList = document.getElementById("roomList");
@@ -180,7 +172,7 @@
       const allLi = document.createElement("li");
       allLi.className = "list-group-item room-item active";
       allLi.setAttribute("tabindex", "0");
-      allLi.textContent = "All Rooms";
+      allLi.innerHTML = `<span class="room-color-box" style="background-color: #999"></span> All Rooms`;
       allLi.onclick = (e) => {
         e.preventDefault();
         allLi.blur();
@@ -190,12 +182,15 @@
 
       firestore.collection("meetingroomlist").orderBy("displayorder").get().then(snapshot => {
         snapshot.forEach((doc) => {
-          const name = doc.data().name;
-          roomColorMap[name] = '#999';
+          const data = doc.data();
+          const name = data.name;
+          const color = data.roomColor || "#999";
+          roomColorMap[name] = color;
+
           const li = document.createElement("li");
           li.className = "list-group-item room-item";
           li.setAttribute("tabindex", "0");
-          li.textContent = name;
+          li.innerHTML = `<span class="room-color-box" style="background-color: ${color}"></span> ${name}`;
           li.onclick = (e) => {
             e.preventDefault();
             li.blur();
@@ -210,7 +205,7 @@
     function selectRoom(roomName) {
       currentRoom = roomName;
       document.querySelectorAll(".room-item").forEach(el => el.classList.remove("active"));
-      [...document.querySelectorAll(".room-item")].find(el => el.textContent === roomName)?.classList.add("active");
+      [...document.querySelectorAll(".room-item")].find(el => el.textContent.includes(roomName))?.classList.add("active");
       loadEvents();
     }
 
