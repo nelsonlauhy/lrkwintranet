@@ -15,20 +15,22 @@
       max-height: 75vh;
       overflow-y: auto;
       background-color: #fff;
-      border: 1px solid #dee2e6;
+      border: none;
       border-radius: 0.5rem;
-      padding: 1rem;
+      padding: 0;
     }
     .room-item {
       cursor: pointer;
-      padding: 0.5rem 1rem;
-      border-radius: 0.375rem;
+      padding: 0.75rem 1rem;
+      border: none;
+      border-bottom: 1px solid #dee2e6;
+      user-select: none;
     }
     .room-item:hover {
-      background-color: #f0f0f0;
+      background-color: #e9ecef;
     }
     .room-item.active {
-      background-color: #0d6efd;
+      background-color: #adb5bd;
       color: #fff;
     }
     #calendar {
@@ -41,8 +43,28 @@
       margin-bottom: 1rem;
       font-weight: 600;
       font-size: 1.25rem;
-      border-bottom: 2px solid #0d6efd;
+      border-bottom: 2px solid #adb5bd;
       padding-bottom: 0.25rem;
+    }
+    .fc .fc-button-primary {
+      background-color: #adb5bd;
+      border-color: #adb5bd;
+    }
+    .fc .fc-button-primary:hover {
+      background-color: #868e96;
+      border-color: #868e96;
+    }
+    .fc .fc-button-primary:not(:disabled).fc-button-active,
+    .fc .fc-button-primary:focus {
+      background-color: #868e96;
+      border-color: #868e96;
+      box-shadow: none;
+    }
+    .fc .fc-toolbar-title {
+      color: #495057;
+    }
+    .fc .fc-col-header-cell-cushion {
+      color: #495057;
     }
   </style>
 </head>
@@ -102,9 +124,12 @@
         roomList.innerHTML = '';
         snapshot.forEach(doc => {
           const li = document.createElement("li");
-          li.className = "list-group-item room-item mb-1";
+          li.className = "list-group-item room-item";
           li.textContent = doc.data().name;
-          li.onclick = () => selectRoom(doc.data().name);
+          li.onclick = (e) => {
+            e.preventDefault();
+            selectRoom(doc.data().name);
+          };
           roomList.appendChild(li);
         });
       });
