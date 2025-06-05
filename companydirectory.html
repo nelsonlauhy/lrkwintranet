@@ -14,16 +14,38 @@
 </head>
 <body class="bg-white">
 
-<!-- Navbar -->
 <div id="navbarContainer"></div>
 
-<!-- Main Content -->
 <div class="container mt-5">
   <h2 class="mb-4">Company Directory</h2>
 
-  <div class="mb-3">
-    <input type="text" class="form-control" id="searchInput" placeholder="Search by name, office, or title...">
+  <div class="row mb-3">
+    <div class="col-md-6 mb-2">
+      <input type="text" class="form-control" id="searchInput" placeholder="Search by name, office, or title...">
+    </div>
+    <div class="col-md-6 mb-2">
+      <select id="officeFilter" class="form-select">
+        <option value="">All Offices</option>
+        <option>LRI HO</option>
+        <option>LRI NM</option>
+        <option>LRI MS</option>
+        <option>LRI WB</option>
+        <option>LRI YE</option>
+        <option>LRI YB</option>
+        <option>ICI</option>
+        <option>LPI HO</option>
+        <option>LPI KS</option>
+        <option>LPI CT</option>
+        <option>LPI EQ1</option>
+        <option>LPI EQ2</option>
+        <option>LPI AT</option>
+        <option>IHMG</option>
+        <option>OGR</option>
+      </select>
+    </div>
   </div>
+
+  <div id="recordInfo" class="mb-2 text-end text-muted small"></div>
 
   <div class="table-responsive">
     <table class="table table-hover align-middle" id="directoryTable">
@@ -38,14 +60,15 @@
           <th>Email</th>
         </tr>
       </thead>
-      <tbody id="directoryBody">
-        <!-- Data rows inserted here -->
-      </tbody>
+      <tbody id="directoryBody"></tbody>
     </table>
   </div>
+
+  <nav>
+    <ul class="pagination justify-content-center" id="pagination"></ul>
+  </nav>
 </div>
 
-<!-- Profile Modal -->
 <div id="modalContainer"></div>
 
 <script>
@@ -53,7 +76,6 @@
     const userInfo = JSON.parse(sessionStorage.getItem("user"));
     if (!userInfo) window.location.href = "index.html";
 
-    // Load navbar
     fetch('navbar.html')
       .then(res => res.text())
       .then(html => {
@@ -66,7 +88,6 @@
         });
       });
 
-    // Load profile modal
     fetch('profileModal.html')
       .then(res => res.text())
       .then(html => document.getElementById("modalContainer").innerHTML = html)
@@ -77,19 +98,22 @@
         document.body.appendChild(script);
       });
 
-    // Firebase initialization guard
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    let allRows = [];
+    let filteredRows = [];
+    const pageSize = 10;
+    let currentPage = 1;
 
-    // Load directory from Firebase
-    db.collection("companydirectory").orderBy("DisplayOrder").get().then(snapshot => {
+    const renderTable = () => {
       const tbody = document.getElementById("directoryBody");
-      if (!tbody) return;
+      tbody.innerHTML = "";
 
-      snapshot.forEach(doc => {
-        const data = doc.data();
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      const currentPageRows = filteredRows.slice(start, end);
+
+      currentPageRows.forEach(data => {
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${data.DisplayName || ""}</td>
@@ -102,17 +126,52 @@
         `;
         tbody.appendChild(row);
       });
+
+      document.getElementById("recordInfo").textContent = `Showing ${start + 1}-${Math.min(end, filteredRows.length)} of ${filteredRows.length} records`;
+      renderPagination();
+    };
+
+    const renderPagination = () => {
+      const pageCount = Math.ceil(filteredRows.length / pageSize);
+      const pagination = document.getElementById("pagination");
+      pagination.innerHTML = "";
+
+      for (let i = 1; i <= pageCount; i++) {
+        const li = document.createElement("li");
+        li.className = `page-item ${i === currentPage ? "active" : ""}`;
+        li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+        li.addEventListener("click", (e) => {
+          e.preventDefault();
+          currentPage = i;
+          renderTable();
+        });
+        pagination.appendChild(li);
+      }
+    };
+
+    const applyFilters = () => {
+      const searchText = document.getElementById("searchInput").value.toLowerCase();
+      const selectedOffice = document.getElementById("officeFilter").value;
+
+      filteredRows = allRows.filter(data => {
+        const matchesText =
+          `${data.DisplayName} ${data.Title} ${data.OfficeName}`.toLowerCase().includes(searchText);
+        const matchesOffice = !selectedOffice || data.OfficeName === selectedOffice;
+        return matchesText && matchesOffice;
+      });
+
+      currentPage = 1;
+      renderTable();
+    };
+
+    db.collection("companydirectory").orderBy("DisplayOrder").get().then(snapshot => {
+      snapshot.forEach(doc => allRows.push(doc.data()));
+      filteredRows = [...allRows];
+      renderTable();
     });
 
-    // Search filter
-    document.getElementById("searchInput").addEventListener("input", function () {
-      const keyword = this.value.toLowerCase();
-      const rows = document.querySelectorAll("#directoryBody tr");
-      rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(keyword) ? "" : "none";
-      });
-    });
+    document.getElementById("searchInput").addEventListener("input", applyFilters);
+    document.getElementById("officeFilter").addEventListener("change", applyFilters);
   });
 </script>
 
