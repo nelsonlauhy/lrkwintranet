@@ -96,12 +96,11 @@
         <div class="mb-3">
           <label for="paperSize" class="form-label">Select Paper Size:</label>
           <select id="paperSize" class="form-select w-auto">
-            <option value="">-- Select --</option>
             <option value="Letter">Letter</option>
             <option value="Legal">Legal</option>
           </select>
         </div>
-        <div id="pdfPreviewContainer" class="d-none">
+        <div id="pdfPreviewContainer">
           <iframe id="pdfFrame" style="width: 100%; height: 75vh;" frameborder="0"></iframe>
         </div>
       </div>
@@ -212,19 +211,21 @@
 
     document.getElementById("paperSize").addEventListener("change", function () {
       const selected = this.value;
-      const previewContainer = document.getElementById("pdfPreviewContainer");
       const pdfFrame = document.getElementById("pdfFrame");
-
       if (selected === "Letter") {
         pdfFrame.src = "companydirectorypdf/CompanyDirectoryLetterSize.pdf";
-        previewContainer.classList.remove("d-none");
       } else if (selected === "Legal") {
         pdfFrame.src = "companydirectorypdf/CompanyDirectoryLegalSize.pdf";
-        previewContainer.classList.remove("d-none");
-      } else {
-        pdfFrame.src = "";
-        previewContainer.classList.add("d-none");
       }
+    });
+
+    const pdfModal = document.getElementById('pdfModal');
+    pdfModal.addEventListener('show.bs.modal', function () {
+      const paperSizeSelect = document.getElementById("paperSize");
+      const pdfFrame = document.getElementById("pdfFrame");
+
+      paperSizeSelect.value = "Letter";
+      pdfFrame.src = "companydirectorypdf/CompanyDirectoryLetterSize.pdf";
     });
   });
 </script>
@@ -232,4 +233,3 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
