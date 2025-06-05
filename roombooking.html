@@ -25,6 +25,7 @@
       border: none;
       border-bottom: 1px solid #ced4da;
       user-select: none;
+      outline: none;
     }
     .room-item:hover {
       background-color: #e9ecef;
@@ -32,6 +33,10 @@
     .room-item.active {
       background-color: #adb5bd;
       color: #fff;
+    }
+    .room-item:focus {
+      box-shadow: none;
+      outline: none;
     }
     #calendar {
       background-color: #fff;
@@ -128,9 +133,11 @@
         snapshot.forEach(doc => {
           const li = document.createElement("li");
           li.className = "list-group-item room-item";
+          li.setAttribute("tabindex", "0");
           li.textContent = doc.data().name;
           li.onclick = (e) => {
             e.preventDefault();
+            li.blur();
             selectRoom(doc.data().name);
           };
           roomList.appendChild(li);
