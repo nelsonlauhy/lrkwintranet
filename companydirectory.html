@@ -13,12 +13,12 @@
   <script src="firebaseConfig.js"></script>
   <style>
     tbody tr:nth-child(odd) {
-        background-color: #f9f9f9;
+      background-color: #f9f9f9;
     }
     tbody tr:nth-child(even) {
-        background-color: #ffffff;
+      background-color: #ffffff;
     }
-    </style>
+  </style>
 </head>
 <body class="bg-white">
 
@@ -52,6 +52,12 @@
     </div>
   </div>
 
+  <div class="mb-3 text-end">
+    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#pdfModal">
+      📄 Preview Company Directory (PDF)
+    </button>
+  </div>
+
   <div id="recordInfo" class="mb-2 text-end text-muted small"></div>
 
   <div class="table-responsive">
@@ -77,6 +83,31 @@
 </div>
 
 <div id="modalContainer"></div>
+
+<!-- PDF Preview Modal -->
+<div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pdfModalLabel">Preview Company Directory PDF</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="paperSize" class="form-label">Select Paper Size:</label>
+          <select id="paperSize" class="form-select w-auto">
+            <option value="">-- Select --</option>
+            <option value="Letter">Letter</option>
+            <option value="Legal">Legal</option>
+          </select>
+        </div>
+        <div id="pdfPreviewContainer" class="d-none">
+          <iframe id="pdfFrame" style="width: 100%; height: 75vh;" frameborder="0"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
   window.addEventListener('DOMContentLoaded', () => {
@@ -161,8 +192,7 @@
       const selectedOffice = document.getElementById("officeFilter").value;
 
       filteredRows = allRows.filter(data => {
-        const matchesText =
-          `${data.DisplayName} ${data.Title} ${data.OfficeName}`.toLowerCase().includes(searchText);
+        const matchesText = `${data.DisplayName} ${data.Title} ${data.OfficeName}`.toLowerCase().includes(searchText);
         const matchesOffice = !selectedOffice || data.OfficeName === selectedOffice;
         return matchesText && matchesOffice;
       });
@@ -179,9 +209,27 @@
 
     document.getElementById("searchInput").addEventListener("input", applyFilters);
     document.getElementById("officeFilter").addEventListener("change", applyFilters);
+
+    document.getElementById("paperSize").addEventListener("change", function () {
+      const selected = this.value;
+      const previewContainer = document.getElementById("pdfPreviewContainer");
+      const pdfFrame = document.getElementById("pdfFrame");
+
+      if (selected === "Letter") {
+        pdfFrame.src = "companydirectorypdf/CompanyDirectoryLetterSize.pdf";
+        previewContainer.classList.remove("d-none");
+      } else if (selected === "Legal") {
+        pdfFrame.src = "companydirectorypdf/CompanyDirectoryLegalSize.pdf";
+        previewContainer.classList.remove("d-none");
+      } else {
+        pdfFrame.src = "";
+        previewContainer.classList.add("d-none");
+      }
+    });
   });
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
