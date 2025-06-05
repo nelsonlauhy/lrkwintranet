@@ -166,25 +166,26 @@
     }
 
     function loadEvents() {
-      if (!currentRoom) return;
-      let query = firestore.collection("roomevent");
-      if (currentRoom !== "All Rooms") {
-        query = query.where("roomName", "==", currentRoom);
-      }
-      query.get().then(snapshot => {
-        const events = snapshot.docs.map(doc => {
-          const d = doc.data();
-          return {
-            title: d.title,
-            start: new Date(d.start),
-            end: new Date(d.end),
-            description: d.eventDescription
-          };
+        if (!currentRoom) return;
+        let query = firestore.collection("roomevent");
+        if (currentRoom !== "All Rooms") {
+            query = query.where("roomName", "==", currentRoom);
+        }
+        query.get().then(snapshot => {
+            const events = snapshot.docs.map(doc => {
+            const d = doc.data();
+            return {
+                title: d.title,
+                start: d.start?.toDate?.() || new Date(d.start),
+                end: d.end?.toDate?.() || new Date(d.end),
+                description: d.eventDescription
+            };
+            });
+            calendar.removeAllEvents();
+            calendar.addEventSource(events);
         });
-        calendar.removeAllEvents();
-        calendar.addEventSource(events);
-      });
-    }
+        }
+
 
     document.addEventListener('DOMContentLoaded', function() {
       const calendarEl = document.getElementById('calendar');
