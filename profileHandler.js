@@ -1,33 +1,52 @@
-// profileHandler.js
 function loadUserProfile(token) {
+  const db = firebase.firestore();
+
   fetch("https://graph.microsoft.com/v1.0/me", {
     headers: { Authorization: `Bearer ${token}` }
   })
   .then(res => res.json())
   .then(profile => {
-    const [firstName, ...lastParts] = profile.displayName.split(" ");
+    const displayName = profile.displayName || "";
+    const [firstName, ...lastParts] = displayName.split(" ");
     const lastName = lastParts.join(" ");
     const email = (profile.mail || profile.userPrincipalName).toLowerCase().trim();
+    const jobTitle = profile.jobTitle || "";
 
-    document.getElementById("profileFirstName").textContent = firstName;
-    document.getElementById("profileLastName").textContent = lastName;
-    document.getElementById("profileEmail").textContent = email;
-    document.getElementById("profileJobTitle").textContent = profile.jobTitle || "";
-    document.getElementById("profileInitials").textContent =
-      (firstName[0] || "") + (lastName[0] || "");
+    // Fill initials
+    const initials = (firstName[0] || "") + (lastName[0] || "");
+    setTextIfExists("profileInitials", initials);
 
+    // Fill name and email
+    setTextIfExists("profileFirstName", firstName);
+    setTextIfExists("profileLastName", lastName);
+    setTextIfExists("profileEmail", email);
+    setTextIfExists("profileJobTitle", jobTitle);  // Safe even if jobTitle field is removed
+
+    // Now query Firebase using email
     db.collection("companydirectory").where("Email", "==", email).get()
       .then(snapshot => {
-        if (!snapshot.empty) {
-          const data = snapshot.docs[0].data();
-          document.getElementById("profileExt").textContent = data.Ext || "";
-          document.getElementById("profileDirectTel").textContent = data.DirectTel || "";
-          document.getElementById("profilePersonalTel").textContent = data.PersonalTel || "";
-          document.getElementById("profileCompanyCode").textContent = data.companyCode || "";
-          document.getElementById("profileTitle").textContent = data.Title || "";
-          document.getElementById("profileOfficeName").textContent = data.OfficeName || "";
-          document.getElementById("profileCompany").textContent = data.Company || "";
+        if (snapshot.empty) {
+          console.warn("No matching record in Firebase for:", email);
+          return;
         }
-      });
-  });
+        const data = snapshot.docs[0].data();
+
+        // Fill Firebase fields
+        setTextIfExists("profileExt", data.Ext);
+        setTextIfExists("profileDirectTel", data.DirectTel);
+        setTextIfExists("profilePersonalTel", data.PersonalTel);
+        setTextIfExists("profileCompanyCode", data.companyCode);
+        setTextIfExists("profileTitle", data.Title);
+        setTextIfExists("profileOfficeName", data.OfficeName);
+        setTextIfExists("profileCompany", data.Company);
+      })
+      .catch(err => console.error("Error retrieving Firebase data:", err));
+  })
+  .catch(err => console.error("Error retrieving Microsoft Graph profile:", err));
+}
+
+// Utility function to avoid null reference errors
+function setTextIfExists(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value || "";
 }
