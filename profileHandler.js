@@ -24,6 +24,7 @@ function loadUserProfile(token) {
           document.getElementById("profileDirectTel").textContent = data.DirectTel || "";
           document.getElementById("profilePersonalTel").textContent = data.PersonalTel || "";
           document.getElementById("profileCompanyCode").textContent = data.companyCode || "";
+          document.getElementById("profileCompany").textContent = data.Company || "";
           document.getElementById("profileTitle").textContent = data.Title || "";
           document.getElementById("profileOfficeName").textContent = data.OfficeName || "";
         }
