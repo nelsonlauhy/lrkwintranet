@@ -125,12 +125,13 @@
 
     const firestore = firebase.firestore();
     let currentRoom = '';
+    let firstRoomLoaded = false;
 
     function loadRooms() {
       firestore.collection("meetingroomlist").orderBy("displayorder").get().then(snapshot => {
         const roomList = document.getElementById("roomList");
         roomList.innerHTML = '';
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc, index) => {
           const li = document.createElement("li");
           li.className = "list-group-item room-item";
           li.setAttribute("tabindex", "0");
@@ -141,6 +142,11 @@
             selectRoom(doc.data().name);
           };
           roomList.appendChild(li);
+
+          if (!firstRoomLoaded && index === 0) {
+            selectRoom(doc.data().name);
+            firstRoomLoaded = true;
+          }
         });
       });
     }
@@ -153,6 +159,7 @@
     }
 
     function loadEvents() {
+      if (!currentRoom) return;
       firestore.collection("roomevent").where("roomName", "==", currentRoom).get().then(snapshot => {
         const events = snapshot.docs.map(doc => {
           const d = doc.data();
