@@ -11,6 +11,14 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="msalconfig.js"></script>
   <script src="firebaseConfig.js"></script>
+  <style>
+    tbody tr:nth-child(odd) {
+        background-color: #f9f9f9;
+    }
+    tbody tr:nth-child(even) {
+        background-color: #ffffff;
+    }
+    </style>
 </head>
 <body class="bg-white">
 
@@ -34,7 +42,6 @@
         <option>LRI YB</option>
         <option>ICI</option>
         <option>LPI HO</option>
-        <option>LPI KS</option>
         <option>LPI CT</option>
         <option>LPI EQ1</option>
         <option>LPI EQ2</option>
@@ -48,7 +55,7 @@
   <div id="recordInfo" class="mb-2 text-end text-muted small"></div>
 
   <div class="table-responsive">
-    <table class="table table-hover align-middle" id="directoryTable">
+    <table class="table table-hover table-striped align-middle" id="directoryTable">
       <thead class="table-light">
         <tr>
           <th>Name</th>
