@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Room Booking - Living Realty KW</title>
+  <link rel="icon" type="image/png" href="images/logos2.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css' rel='stylesheet' />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js'></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="msalconfig.js"></script>
+  <script src="firebaseConfig.js"></script>
+  <style>
+    .room-list {
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .room-item {
+      cursor: pointer;
+    }
+    .room-item.active {
+      font-weight: bold;
+      color: #0d6efd;
+    }
+  </style>
+</head>
+<body class="bg-white">
+  <div id="navbarContainer"></div>
+  <div class="container-fluid mt-4">
+    <div class="row">
+      <div class="col-md-2">
+        <h5>Meeting Rooms</h5>
+        <ul class="list-group room-list" id="roomList"></ul>
+      </div>
+      <div class="col-md-10">
+        <div id='calendar'></div>
+      </div>
+    </div>
+  </div>
+  <div id="modalContainer"></div>
+  <script>
+    const userInfo = JSON.parse(sessionStorage.getItem("user"));
+    if (!userInfo) window.location.href = "index.html";
+
+    fetch('navbar.html').then(res => res.text()).then(html => {
+      document.getElementById("navbarContainer").innerHTML = html;
+      document.getElementById("userName").textContent = userInfo?.name || "User";
+      const msalInstance = new msal.PublicClientApplication(msalConfig);
+      document.getElementById("signOutLink").addEventListener("click", () => {
+        sessionStorage.clear();
+        msalInstance.logoutRedirect();
+      });
+    });
+
+    fetch('profileModal.html')
+      .then(res => res.text())
+      .then(html => document.getElementById("modalContainer").innerHTML = html)
+      .then(() => {
+        const script = document.createElement('script');
+        script.src = 'profileHandler.js';
+        script.onload = () => loadUserProfile(userInfo.token);
+        document.body.appendChild(script);
+      });
+
+    const db = firebase.firestore();
+    let currentRoom = '';
+
+    function loadRooms() {
+      db.collection("meetingroomlist").orderBy("displayorder").get().then(snapshot => {
+        const roomList = document.getElementById("roomList");
+        roomList.innerHTML = '';
+        snapshot.forEach(doc => {
+          const li = document.createElement("li");
+          li.className = "list-group-item room-item";
+          li.textContent = doc.data().name;
+          li.onclick = () => selectRoom(doc.data().name);
+          roomList.appendChild(li);
+        });
+      });
+    }
+
+    function selectRoom(roomName) {
+      currentRoom = roomName;
+      document.querySelectorAll(".room-item").forEach(el => el.classList.remove("active"));
+      [...document.querySelectorAll(".room-item")].find(el => el.textContent === roomName)?.classList.add("active");
+      loadEvents();
+    }
+
+    function loadEvents() {
+      db.collection("roomevent").where("roomName", "==", currentRoom).get().then(snapshot => {
+        const events = snapshot.docs.map(doc => {
+          const d = doc.data();
+          return {
+            title: d.title,
+            start: new Date(d.start),
+            end: new Date(d.end),
+            description: d.eventDescription
+          };
+        });
+        calendar.removeAllEvents();
+        calendar.addEventSource(events);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const calendarEl = document.getElementById('calendar');
+      window.calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        height: 'auto'
+      });
+      calendar.render();
+      loadRooms();
+    });
+  </script>
+</body>
+</html>
