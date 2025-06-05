@@ -13,6 +13,8 @@ function loadUserProfile(token) {
     document.getElementById("profileLastName").textContent = lastName;
     document.getElementById("profileEmail").textContent = email;
     document.getElementById("profileJobTitle").textContent = profile.jobTitle || "";
+    document.getElementById("profileInitials").textContent =
+      (firstName[0] || "") + (lastName[0] || "");
 
     db.collection("companydirectory").where("Email", "==", email).get()
       .then(snapshot => {
