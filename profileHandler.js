@@ -26,6 +26,7 @@ function loadUserProfile(token) {
           document.getElementById("profileCompanyCode").textContent = data.companyCode || "";
           document.getElementById("profileTitle").textContent = data.Title || "";
           document.getElementById("profileOfficeName").textContent = data.OfficeName || "";
+          document.getElementById("profileCompany").textContent = data.Company || "";
         }
       });
   });
