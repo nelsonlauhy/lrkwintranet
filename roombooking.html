@@ -86,6 +86,9 @@
       color: #fff !important;
       font-weight: normal !important;
     }
+    .fc-event .fc-event-dot {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -154,6 +157,7 @@
           end: data.end?.toDate?.() || new Date(data.end),
           backgroundColor: roomColorMap[data.roomName] || "#999",
           textColor: "#fff",
+          display: 'block',
           extendedProps: {
             roomName: data.roomName || "",
             companyCode: data.companyCode || "",
