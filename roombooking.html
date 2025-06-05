@@ -129,7 +129,7 @@
 
     async function getRoomEvents(room) {
     console.log("[getRoomEvents] Fetching events for:", room);
-    let query = firestore.collection("roomevent").orderBy("start");
+    let query = firestore.collection("roomevents").orderBy("start");
     if (room !== "All Rooms") {
         query = query.where("roomName", "==", room);
     }
