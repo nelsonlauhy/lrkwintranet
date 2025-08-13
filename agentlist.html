@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent Directory · Living Realty KW</title>
+  <link rel="icon" type="image/png" href="images/logos2.png" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Firebase (compat builds for simplicity) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <!-- Your project config -->
+  <script src="firebaseConfig.js"></script>
+  <style>
+    body { background: #ffffff; }
+    tbody tr:nth-child(odd) { background-color: #f9f9f9; }
+    tbody tr:nth-child(even) { background-color: #ffffff; }
+    .table thead th { white-space: nowrap; }
+    .spinner-wrap { min-height: 50vh; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg bg-light border-bottom sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-semibold" href="#">Agent Directory</a>
+      <div class="ms-auto d-flex align-items-center gap-3">
+        <span id="userBadge" class="text-muted small d-none"></span>
+        <button id="btnSignIn" class="btn btn-primary btn-sm">Sign in with Microsoft</button>
+        <button id="btnSignOut" class="btn btn-outline-secondary btn-sm d-none">Sign out</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <!-- Filters / Search -->
+    <div class="row g-2 align-items-end mb-3">
+      <div class="col-12 col-md-4">
+        <label for="searchInput" class="form-label mb-1">Search</label>
+        <input id="searchInput" class="form-control" placeholder="Search by Agent, Mobile, or Email…" />
+      </div>
+      <div class="col-6 col-md-3">
+        <label for="branchFilter" class="form-label mb-1">Branch</label>
+        <select id="branchFilter" class="form-select">
+          <option value="">All Branches</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <label for="typeFilter" class="form-label mb-1">Type</label>
+        <select id="typeFilter" class="form-select">
+          <option value="">All Types</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2 text-md-end">
+        <label class="form-label mb-1 d-none d-md-block">&nbsp;</label>
+        <button id="btnReset" class="btn btn-outline-secondary w-100">Reset</button>
+      </div>
+    </div>
+
+    <!-- Info + Pagination top (optional) -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div id="recordInfo" class="small text-muted"></div>
+      <ul class="pagination pagination-sm mb-0" id="paginationTop"></ul>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive border rounded">
+      <table class="table table-hover align-middle mb-0" id="agentTable">
+        <thead class="table-light">
+          <tr>
+            <th style="min-width: 200px;">Agent</th>
+            <th>Mobile</th>
+            <th>Email</th>
+            <th>Join Date</th>
+            <th>Type</th>
+            <th>Branch</th>
+          </tr>
+        </thead>
+        <tbody id="agentBody"></tbody>
+      </table>
+      <!-- Loading state -->
+      <div id="loadingState" class="d-flex justify-content-center align-items-center spinner-wrap">
+        <div class="text-center text-muted">
+          <div class="spinner-border" role="status" aria-hidden="true"></div>
+          <div class="mt-2">Loading…</div>
+        </div>
+      </div>
+      <!-- Empty state -->
+      <div id="emptyState" class="p-4 text-center d-none">
+        <p class="text-muted mb-0">No agents found.</p>
+      </div>
+    </div>
+
+    <!-- Pagination bottom -->
+    <div class="d-flex justify-content-center mt-3">
+      <ul class="pagination" id="pagination"></ul>
+    </div>
+  </main>
+
+  <script>
+    // ---- Initialize Firebase ----
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Use Firebase Auth with Microsoft provider (O365 sign-in)
+    const provider = new firebase.auth.OAuthProvider('microsoft.com');
+    // Optional: ask for basic Graph scopes (profile/email)
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    const btnSignIn = document.getElementById('btnSignIn');
+    const btnSignOut = document.getElementById('btnSignOut');
+    const userBadge = document.getElementById('userBadge');
+
+    btnSignIn.addEventListener('click', async () => {
+      try {
+        await auth.signInWithPopup(provider);
+      } catch (e) {
+        console.error('Sign-in failed:', e);
+        alert('Microsoft sign-in failed. Please try again.');
+      }
+    });
+
+    btnSignOut.addEventListener('click', async () => {
+      await auth.signOut();
+    });
+
+    // ---- UI + Data state ----
+    const pageSize = 12; // rows per page
+    let allRows = [];
+    let filtered = [];
+    let currentPage = 1;
+
+    const $body = document.getElementById('agentBody');
+    const $info = document.getElementById('recordInfo');
+    const $pagination = document.getElementById('pagination');
+    const $paginationTop = document.getElementById('paginationTop');
+    const $search = document.getElementById('searchInput');
+    const $branch = document.getElementById('branchFilter');
+    const $type = document.getElementById('typeFilter');
+    const $reset = document.getElementById('btnReset');
+    const $loading = document.getElementById('loadingState');
+    const $empty = document.getElementById('emptyState');
+
+    function fmtDate(ts) {
+      if (!ts) return '';
+      try {
+        // Firestore Timestamp or JS Date/string
+        const d = ts.toDate ? ts.toDate() : new Date(ts);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      } catch { return ''; }
+    }
+
+    function buildFiltersFromData(rows) {
+      const branches = new Set();
+      const types = new Set();
+      rows.forEach(r => {
+        if (r.Branch) branches.add(r.Branch);
+        if (r.Type) types.add(r.Type);
+      });
+      // Populate Branch
+      [...branches].sort().forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b; opt.textContent = b; $branch.appendChild(opt);
+      });
+      // Populate Type
+      [...types].sort().forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t; opt.textContent = t; $type.appendChild(opt);
+      });
+    }
+
+    function applyFilters() {
+      const q = ($search.value || '').toLowerCase().trim();
+      const b = $branch.value;
+      const t = $type.value;
+
+      filtered = allRows.filter(r => {
+        const hay = `${r.Agent || ''} ${r.Mobile || ''} ${r.Email || ''}`.toLowerCase();
+        const matchText = !q || hay.includes(q);
+        const matchBranch = !b || r.Branch === b;
+        const matchType = !t || r.Type === t;
+        return matchText && matchBranch && matchType;
+      });
+      currentPage = 1;
+      render();
+    }
+
+    function render() {
+      // Pagination slice
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      const rows = filtered.slice(start, end);
+
+      // Table body
+      $body.innerHTML = rows.map(r => `
+        <tr>
+          <td class="fw-semibold">${r.Agent || ''}</td>
+          <td><a href="tel:${r.Mobile || ''}">${r.Mobile || ''}</a></td>
+          <td>${r.Email ? `<a href="mailto:${r.Email}">${r.Email}</a>` : ''}</td>
+          <td>${fmtDate(r.JoinDate)}</td>
+          <td>${r.Type || ''}</td>
+          <td>${r.Branch || ''}</td>
+        </tr>
+      `).join('');
+
+      // States
+      $loading.classList.add('d-none');
+      $empty.classList.toggle('d-none', filtered.length !== 0);
+
+      // Info
+      const shownFrom = filtered.length ? start + 1 : 0;
+      const shownTo = Math.min(end, filtered.length);
+      $info.textContent = `Showing ${shownFrom}-${shownTo} of ${filtered.length} records`;
+
+      // Pagination controls
+      buildPagination($pagination);
+      buildPagination($paginationTop);
+    }
+
+    function buildPagination(container) {
+      const pageCount = Math.ceil(filtered.length / pageSize) || 1;
+      container.innerHTML = '';
+
+      function pageItem(label, page, disabled = false, active = false) {
+        const li = document.createElement('li');
+        li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#">${label}</a>`;
+        li.addEventListener('click', e => {
+          e.preventDefault();
+          if (disabled) return;
+          currentPage = page;
+          render();
+        });
+        return li;
+      }
+
+      // Prev
+      container.appendChild(pageItem('«', Math.max(1, currentPage - 1), currentPage === 1));
+      // Pages (compact)
+      const windowSize = 5;
+      const start = Math.max(1, currentPage - Math.floor(windowSize / 2));
+      const stop = Math.min(pageCount, start + windowSize - 1);
+      for (let p = start; p <= stop; p++) {
+        container.appendChild(pageItem(String(p), p, false, p === currentPage));
+      }
+      // Next
+      container.appendChild(pageItem('»', Math.min(pageCount, currentPage + 1), currentPage === pageCount));
+    }
+
+    async function fetchData() {
+      // Load all docs ordered by Agent for stable display
+      const snap = await db.collection('agentlist').orderBy('Agent').get();
+      allRows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      buildFiltersFromData(allRows);
+      filtered = [...allRows];
+      render();
+    }
+
+    // ---- Auth gate + initial load ----
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        // UI state
+        userBadge.classList.remove('d-none');
+        userBadge.textContent = user.displayName ? `${user.displayName} · ${user.email}` : user.email;
+        btnSignIn.classList.add('d-none');
+        btnSignOut.classList.remove('d-none');
+        // Load data
+        fetchData().catch(err => {
+          console.error(err);
+          alert('Failed to load data.');
+        });
+      } else {
+        // Signed out
+        userBadge.classList.add('d-none');
+        btnSignOut.classList.add('d-none');
+        btnSignIn.classList.remove('d-none');
+        $loading.classList.remove('d-none');
+        $body.innerHTML = '';
+        $info.textContent = '';
+      }
+    });
+
+    // Events
+    $search.addEventListener('input', applyFilters);
+    $branch.addEventListener('change', applyFilters);
+    $type.addEventListener('change', applyFilters);
+    $reset.addEventListener('click', () => {
+      $search.value = '';
+      $branch.value = '';
+      $type.value = '';
+      applyFilters();
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
