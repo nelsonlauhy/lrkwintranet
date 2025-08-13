@@ -155,35 +155,44 @@
       }
     };
 
+    const formatPhone = (num) => {
+        if (!num) return "";
+        const digits = num.toString().replace(/\D/g, ""); // keep only numbers
+        if (digits.length === 10) {
+            return `(${digits.substring(0,3)}) ${digits.substring(3,6)}-${digits.substring(6)}`;
+        }
+        return num; // fallback if not 10 digits
+    };
+
     // --- Rendering ---
     const renderTable = () => {
-      if (!$tbody) return;
-      $tbody.innerHTML = "";
+        if (!$tbody) return;
+        $tbody.innerHTML = "";
 
-      const start = (currentPage - 1) * pageSize;
-      const end = start + pageSize;
-      const currentPageRows = filteredRows.slice(start, end);
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        const currentPageRows = filteredRows.slice(start, end);
 
-      currentPageRows.forEach(data => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td class="fw-semibold">${data.Agent || ""}</td>
-          <td>${data.Mobile ? `<a href="tel:${data.Mobile}">${data.Mobile}</a>` : ""}</td>
-          <td>${data.Email ? `<a href="mailto:${data.Email}">${data.Email}</a>` : ""}</td>
-          <td>${fmtDate(data.JoinDate)}</td>
-          <td>${data.Type || ""}</td>
-          <td>${data.Branch || ""}</td>
-        `;
-        $tbody.appendChild(row);
-      });
+        currentPageRows.forEach(data => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+            <td class="fw-semibold">${data.Agent || ""}</td>
+            <td>${data.Mobile ? `<a href="tel:${data.Mobile}">${formatPhone(data.Mobile)}</a>` : ""}</td>
+            <td>${data.Email ? `<a href="mailto:${data.Email}">${data.Email}</a>` : ""}</td>
+            <td>${fmtDate(data.JoinDate)}</td>
+            <td>${data.Type || ""}</td>
+            <td>${data.Branch || ""}</td>
+            `;
+            $tbody.appendChild(row);
+        });
 
-      if ($recordInfo) {
-        const shownFrom = filteredRows.length ? start + 1 : 0;
-        const shownTo = Math.min(end, filteredRows.length);
-        $recordInfo.textContent = `Showing ${shownFrom}-${shownTo} of ${filteredRows.length} records`;
-      }
+        if ($recordInfo) {
+            const shownFrom = filteredRows.length ? start + 1 : 0;
+            const shownTo = Math.min(end, filteredRows.length);
+            $recordInfo.textContent = `Showing ${shownFrom}-${shownTo} of ${filteredRows.length} records`;
+        }
 
-      renderPagination();
+        renderPagination();
     };
 
     const renderPagination = () => {
