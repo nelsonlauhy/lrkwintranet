@@ -73,17 +73,15 @@
 
 <script>
 (() => {
-  // --- Session / navbar (kept from your pattern) ---
   window.addEventListener('DOMContentLoaded', () => {
+    // ---- Session / navbar (your MSAL pattern kept) ----
     const userInfoRaw = sessionStorage.getItem("user");
     const userInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
     if (!userInfo) {
-      // If you require MSAL login before viewing:
       window.location.href = "index.html";
       return;
     }
 
-    // Navbar injection
     fetch('navbar.html')
       .then(res => res.text())
       .then(html => {
@@ -91,10 +89,8 @@
         if (nav) nav.innerHTML = html;
       })
       .then(() => {
-        // Safe guards if elements are absent
         const nameEl = document.getElementById("userName");
         if (nameEl) nameEl.textContent = userInfo?.name || userInfo?.username || "User";
-
         if (window.msalConfig && window.msal) {
           const msalInstance = new msal.PublicClientApplication(msalConfig);
           const signOutLink = document.getElementById("signOutLink");
@@ -125,12 +121,12 @@
         document.body.appendChild(script);
       });
 
-    // --- Firebase init (scoped and collision-free) ---
+    // ---- Firebase init (scoped) ----
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const fsDb = firebase.firestore();
 
-    // --- State ---
-    const pageSize = 10;
+    // ---- State & DOM ----
+    let pageSize = 10; // can be changed by selector if present
     let allRows = [];
     let filteredRows = [];
     let currentPage = 1;
@@ -139,9 +135,10 @@
     const $pagination = document.getElementById("pagination");
     const $recordInfo = document.getElementById("recordInfo");
     const $search = document.getElementById("searchInput");
-    const $office = document.getElementById("officeFilter");
+    const $branch = document.getElementById("officeFilter");
+    const $pageSizeSelect = document.getElementById("pageSizeSelect"); // optional
 
-    // --- Utils ---
+    // ---- Utils ----
     const fmtDate = (ts) => {
       if (!ts) return "";
       try {
@@ -156,71 +153,115 @@
     };
 
     const formatPhone = (num) => {
-        if (!num) return "";
-        const digits = num.toString().replace(/\D/g, ""); // keep only numbers
-        if (digits.length === 10) {
-            return `(${digits.substring(0,3)}) ${digits.substring(3,6)}-${digits.substring(6)}`;
-        }
-        return num; // fallback if not 10 digits
+      if (!num) return "";
+      const digits = String(num).replace(/\D/g, "");
+      if (digits.length === 10) {
+        return `(${digits.substring(0,3)}) ${digits.substring(3,6)}-${digits.substring(6)}`;
+      }
+      return num; // fallback
     };
 
-    // --- Rendering ---
+    // ---- Renderers ----
     const renderTable = () => {
-        if (!$tbody) return;
-        $tbody.innerHTML = "";
+      if (!$tbody) return;
+      $tbody.innerHTML = "";
 
-        const start = (currentPage - 1) * pageSize;
-        const end = start + pageSize;
-        const currentPageRows = filteredRows.slice(start, end);
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      const currentPageRows = filteredRows.slice(start, end);
 
-        currentPageRows.forEach(data => {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-            <td class="fw-semibold">${data.Agent || ""}</td>
-            <td>${data.Mobile ? `<a href="tel:${data.Mobile}">${formatPhone(data.Mobile)}</a>` : ""}</td>
-            <td>${data.Email ? `<a href="mailto:${data.Email}">${data.Email}</a>` : ""}</td>
-            <td>${fmtDate(data.JoinDate)}</td>
-            <td>${data.Type || ""}</td>
-            <td>${data.Branch || ""}</td>
-            `;
-            $tbody.appendChild(row);
-        });
+      currentPageRows.forEach(data => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td class="fw-semibold">${data.Agent || ""}</td>
+          <td>${data.Mobile ? `<a href="tel:${data.Mobile}">${formatPhone(data.Mobile)}</a>` : ""}</td>
+          <td>${data.Email ? `<a href="mailto:${data.Email}">${data.Email}</a>` : ""}</td>
+          <td>${fmtDate(data.JoinDate)}</td>
+          <td>${data.Type || ""}</td>
+          <td>${data.Branch || ""}</td>
+        `;
+        $tbody.appendChild(row);
+      });
 
-        if ($recordInfo) {
-            const shownFrom = filteredRows.length ? start + 1 : 0;
-            const shownTo = Math.min(end, filteredRows.length);
-            $recordInfo.textContent = `Showing ${shownFrom}-${shownTo} of ${filteredRows.length} records`;
-        }
+      if ($recordInfo) {
+        const shownFrom = filteredRows.length ? start + 1 : 0;
+        const shownTo = Math.min(end, filteredRows.length);
+        $recordInfo.textContent = `Showing ${shownFrom}-${shownTo} of ${filteredRows.length} records`;
+      }
 
-        renderPagination();
+      renderPagination();
     };
 
     const renderPagination = () => {
       if (!$pagination) return;
-      const pageCount = Math.ceil(filteredRows.length / pageSize) || 1;
+      const total = filteredRows.length;
+      const pageCount = Math.max(1, Math.ceil(total / pageSize));
+      const windowSize = 7; // how many numbered buttons (with current) to show
       $pagination.innerHTML = "";
 
-      for (let i = 1; i <= pageCount; i++) {
+      const addItem = (label, page, { disabled=false, active=false } = {}) => {
         const li = document.createElement("li");
-        li.className = `page-item ${i === currentPage ? "active" : ""}`;
-        li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+        li.className = `page-item ${disabled ? "disabled" : ""} ${active ? "active" : ""}`;
+        li.innerHTML = `<a class="page-link" href="#">${label}</a>`;
         li.addEventListener("click", (e) => {
           e.preventDefault();
-          currentPage = i;
+          if (disabled || page === currentPage) return;
+          currentPage = page;
           renderTable();
         });
         $pagination.appendChild(li);
+      };
+
+      // First/Prev
+      addItem("« First", 1, { disabled: currentPage === 1 });
+      addItem("‹ Prev", Math.max(1, currentPage - 1), { disabled: currentPage === 1 });
+
+      // Compute ellipsed window
+      const half = Math.floor((windowSize - 1) / 2);
+      let start = Math.max(1, currentPage - half);
+      let end = Math.min(pageCount, start + windowSize - 1);
+      start = Math.max(1, Math.min(start, end - windowSize + 1));
+
+      // Leading edge
+      if (start > 1) {
+        addItem("1", 1, { active: currentPage === 1 });
+        if (start > 2) {
+          const ell = document.createElement("li");
+          ell.className = "page-item disabled";
+          ell.innerHTML = `<span class="page-link">…</span>`;
+          $pagination.appendChild(ell);
+        }
       }
+
+      // Middle window
+      for (let p = start; p <= end; p++) {
+        addItem(String(p), p, { active: p === currentPage });
+      }
+
+      // Trailing edge
+      if (end < pageCount) {
+        if (end < pageCount - 1) {
+          const ell = document.createElement("li");
+          ell.className = "page-item disabled";
+          ell.innerHTML = `<span class="page-link">…</span>`;
+          $pagination.appendChild(ell);
+        }
+        addItem(String(pageCount), pageCount, { active: currentPage === pageCount });
+      }
+
+      // Next/Last
+      addItem("Next ›", Math.min(pageCount, currentPage + 1), { disabled: currentPage === pageCount });
+      addItem("Last »", pageCount, { disabled: currentPage === pageCount });
     };
 
     const applyFilters = () => {
       const q = ($search?.value || "").toLowerCase();
-      const selectedBranch = $office?.value || "";
+      const selectedBranch = $branch?.value || "";
 
       filteredRows = allRows.filter(data => {
         const hay = `${data.Agent || ""} ${data.Email || ""} ${data.Mobile || ""} ${data.Type || ""} ${data.Branch || ""}`.toLowerCase();
         const matchesText = !q || hay.includes(q);
-        const matchesBranch = !selectedBranch || (data.Branch === selectedBranch);
+        const matchesBranch = !selectedBranch || data.Branch === selectedBranch;
         return matchesText && matchesBranch;
       });
 
@@ -228,21 +269,33 @@
       renderTable();
     };
 
-    // --- Data load from Firestore: agentlist ---
-    fsDb.collection("agentlist").orderBy("Agent").get().then(snapshot => {
-      snapshot.forEach(doc => allRows.push(doc.data()));
-      filteredRows = [...allRows];
-      renderTable();
-    }).catch(err => {
-      console.error("Failed to load agentlist:", err);
-    });
+    // ---- Data load (agentlist) ----
+    fsDb.collection("agentlist").orderBy("Agent").get()
+      .then(snapshot => {
+        snapshot.forEach(doc => allRows.push(doc.data()));
+        filteredRows = [...allRows];
+        renderTable();
+      })
+      .catch(err => {
+        console.error("Failed to load agentlist:", err);
+      });
 
-    // --- Listeners ---
+    // ---- Listeners ----
     $search?.addEventListener("input", applyFilters);
-    $office?.addEventListener("change", applyFilters);
+    $branch?.addEventListener("change", applyFilters);
+
+    if ($pageSizeSelect) {
+      $pageSizeSelect.addEventListener("change", () => {
+        pageSize = parseInt($pageSizeSelect.value, 10) || 10;
+        currentPage = 1;
+        renderTable();
+      });
+      $pageSizeSelect.value = String(pageSize);
+    }
   });
 })();
 </script>
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
