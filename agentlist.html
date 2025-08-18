@@ -171,7 +171,15 @@
     const exportToExcel = () => {
       if (!filteredRows.length) return;
 
-      // Prepare data
+      // Collect filter criteria
+      const q = ($search?.value || "").trim();
+      const selectedBranch = $branch?.value || "";
+      const criteria = [];
+      if (q) criteria.push(`Search keyword: ${q}`);
+      if (selectedBranch) criteria.push(`Branch filter: ${selectedBranch}`);
+      if (!criteria.length) criteria.push("No filter applied");
+
+      // Prepare header + rows
       const header = ["Agent","Mobile","Email","Join Date","Type","Branch"];
       const rows = filteredRows.map(d => [
         d.Agent || "",
@@ -182,11 +190,18 @@
         d.Branch || ""
       ]);
 
-      // Build worksheet
-      const wsData = [header, ...rows];
+      // Combine filter info + blank line + table
+      const wsData = [
+        ["Filter Criteria:"],
+        [criteria.join(" | ")],
+        [],  // blank line
+        header,
+        ...rows
+      ];
+
       const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      // Auto column width
+      // Auto column width (based on content)
       const colWidths = header.map((h, i) => {
         const maxLen = Math.max(
           h.length,
@@ -200,7 +215,7 @@
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "AgentList");
 
-      // Export as Excel file
+      // Save as Excel
       XLSX.writeFile(wb, "agentlist.xlsx");
     };
 
