@@ -10,8 +10,9 @@
 <body class="bg-light text-center d-flex flex-column justify-content-center align-items-center" style="height: 100vh;">
 
   <div>
-    <img src="images/logo2.png" alt="Living Realty KW" style="height: 50px; margin-bottom: 1rem;">
-    <h3 class="mb-4 fs-5">Welcome to Living Realty KW</h3>
+    <img src="images/logo2.png" alt="Living Realty KW" style="height: 70px; margin-bottom: 1rem;">
+    <!-- Changed here: fs-6 for smaller size, fw-light for thinner font -->
+    <h3 class="mb-4 fs-6 fw-light">Welcome to Living Realty KW</h3>
   </div>
 
   <script src="https://alcdn.msauth.net/browser/2.31.0/js/msal-browser.min.js"></script>
@@ -19,7 +20,7 @@
   <script src="auth.js"></script>
 
   <script>
-    document.getElementById("signInBtn").addEventListener("click", () => {
+    document.getElementById("signInBtn")?.addEventListener("click", () => {
       msalInstance.loginRedirect({ scopes: ["User.Read"] });
     });
   </script>
