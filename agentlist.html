@@ -80,7 +80,7 @@
 <script>
 (() => {
   window.addEventListener('DOMContentLoaded', () => {
-    // ---- Session / navbar (your MSAL pattern kept) ----
+    // ---- Session / navbar ----
     const userInfoRaw = sessionStorage.getItem("user");
     const userInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
     if (!userInfo) {
@@ -201,7 +201,7 @@
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      // Auto column width (based on content)
+      // Auto column width
       const colWidths = header.map((h, i) => {
         const maxLen = Math.max(
           h.length,
@@ -210,6 +210,9 @@
         return { wch: maxLen + 2 };
       });
       ws['!cols'] = colWidths;
+
+      // Add autofilter (header starts at row 4)
+      ws['!autofilter'] = { ref: `A4:F${rows.length + 4}` };
 
       // Create workbook
       const wb = XLSX.utils.book_new();
@@ -294,7 +297,7 @@
           ell.innerHTML = `<span class="page-link">…</span>`;
           $pagination.appendChild(ell);
         }
-        addItem(String(pageCount), pageCount, { active: currentPage === pageCount });
+        addItem(String(pageCount), pageCount, { active: p === currentPage });
       }
 
       addItem("Next ›", Math.min(pageCount, currentPage + 1), { disabled: currentPage === pageCount });
