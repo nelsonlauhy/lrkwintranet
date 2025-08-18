@@ -13,12 +13,8 @@
   <script src="msalconfig.js"></script>
   <script src="firebaseConfig.js"></script>
   <style>
-    tbody tr:nth-child(odd) {
-      background-color: #f9f9f9;
-    }
-    tbody tr:nth-child(even) {
-      background-color: #ffffff;
-    }
+    tbody tr:nth-child(odd) { background-color: #f9f9f9; }
+    tbody tr:nth-child(even) { background-color: #ffffff; }
   </style>
 </head>
 <body class="bg-white">
@@ -33,26 +29,22 @@
     </button>
   </div>
   <div class="row mb-3">
-    <div class="col-md-6 mb-2">
+    <div class="col-md-4 mb-2">
       <input type="text" class="form-control" id="searchInput" placeholder="Search by name, office, or title...">
     </div>
-    <div class="col-md-6 mb-2">
+    <div class="col-md-4 mb-2">
+      <select id="companyFilter" class="form-select">
+        <option value="">All Companies</option>
+        <option value="LRI">KW Living Realty</option>
+        <option value="LPI">Living Properties</option>
+        <option value="ICI">ICI</option>
+        <option value="IHMG">IHMG</option>
+        <option value="OGR">Oracle Group</option>
+      </select>
+    </div>
+    <div class="col-md-4 mb-2">
       <select id="officeFilter" class="form-select">
         <option value="">All Offices</option>
-        <option>LRI HO</option>
-        <option>LRI NM</option>
-        <option>LRI MS</option>
-        <option>LRI WB</option>
-        <option>LRI YE</option>
-        <option>LRI YB</option>
-        <option>ICI</option>
-        <option>LPI HO</option>
-        <option>LPI CT</option>
-        <option>LPI EQ1</option>
-        <option>LPI EQ2</option>
-        <option>LPI AT</option>
-        <option>IHMG</option>
-        <option>OGR</option>
       </select>
     </div>
   </div>
@@ -109,37 +101,29 @@
 
 <script>
   window.addEventListener('DOMContentLoaded', () => {
-    const userInfo = JSON.parse(sessionStorage.getItem("user"));
-    if (!userInfo) window.location.href = "index.html";
-
-    fetch('navbar.html')
-      .then(res => res.text())
-      .then(html => {
-        document.getElementById("navbarContainer").innerHTML = html;
-        document.getElementById("userName").textContent = userInfo?.name || userInfo?.username || "User";
-        const msalInstance = new msal.PublicClientApplication(msalConfig);
-        document.getElementById("signOutLink").addEventListener("click", () => {
-          sessionStorage.clear();
-          msalInstance.logoutRedirect();
-        });
-      });
-
-    fetch('profileModal.html')
-      .then(res => res.text())
-      .then(html => document.getElementById("modalContainer").innerHTML = html)
-      .then(() => {
-        const script = document.createElement('script');
-        script.src = 'profileHandler.js';
-        script.onload = () => loadUserProfile(userInfo.token);
-        document.body.appendChild(script);
-      });
-
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     let allRows = [];
     let filteredRows = [];
     const pageSize = 10;
     let currentPage = 1;
+
+    const officeFilterEl = document.getElementById("officeFilter");
+    const companyFilterEl = document.getElementById("companyFilter");
+
+    const renderOfficeFilter = (companyPrefix) => {
+      let offices = new Set();
+      allRows.forEach(r => {
+        if (!companyPrefix || r.OfficeName.startsWith(companyPrefix)) {
+          offices.add(r.OfficeName);
+        }
+      });
+      const sortedOffices = Array.from(offices).sort();
+      officeFilterEl.innerHTML = `<option value="">All Offices</option>`;
+      sortedOffices.forEach(off => {
+        officeFilterEl.innerHTML += `<option>${off}</option>`;
+      });
+    };
 
     const renderTable = () => {
       const tbody = document.getElementById("directoryBody");
@@ -163,7 +147,10 @@
         tbody.appendChild(row);
       });
 
-      document.getElementById("recordInfo").textContent = `Showing ${start + 1}-${Math.min(end, filteredRows.length)} of ${filteredRows.length} records`;
+      document.getElementById("recordInfo").textContent =
+        filteredRows.length > 0
+          ? `Showing ${start + 1}-${Math.min(end, filteredRows.length)} of ${filteredRows.length} records`
+          : "No records found";
       renderPagination();
     };
 
@@ -171,7 +158,6 @@
       const pageCount = Math.ceil(filteredRows.length / pageSize);
       const pagination = document.getElementById("pagination");
       pagination.innerHTML = "";
-
       for (let i = 1; i <= pageCount; i++) {
         const li = document.createElement("li");
         li.className = `page-item ${i === currentPage ? "active" : ""}`;
@@ -187,44 +173,48 @@
 
     const applyFilters = () => {
       const searchText = document.getElementById("searchInput").value.toLowerCase();
-      const selectedOffice = document.getElementById("officeFilter").value;
+      const selectedCompany = companyFilterEl.value;
+      const selectedOffice = officeFilterEl.value;
 
       filteredRows = allRows.filter(data => {
         const matchesText = `${data.DisplayName} ${data.Title} ${data.OfficeName}`.toLowerCase().includes(searchText);
+        const matchesCompany = !selectedCompany || data.OfficeName.startsWith(selectedCompany);
         const matchesOffice = !selectedOffice || data.OfficeName === selectedOffice;
-        return matchesText && matchesOffice;
+        return matchesText && matchesCompany && matchesOffice;
       });
 
       currentPage = 1;
       renderTable();
     };
 
+    // Load data
     db.collection("companydirectory").orderBy("DisplayOrder").get().then(snapshot => {
       snapshot.forEach(doc => allRows.push(doc.data()));
       filteredRows = [...allRows];
+      renderOfficeFilter(""); // all offices initially
       renderTable();
     });
 
+    // Event listeners
     document.getElementById("searchInput").addEventListener("input", applyFilters);
-    document.getElementById("officeFilter").addEventListener("change", applyFilters);
+    officeFilterEl.addEventListener("change", applyFilters);
+    companyFilterEl.addEventListener("change", () => {
+      renderOfficeFilter(companyFilterEl.value);
+      applyFilters();
+    });
 
+    // PDF preview events
     document.getElementById("paperSize").addEventListener("change", function () {
-      const selected = this.value;
       const pdfFrame = document.getElementById("pdfFrame");
-      if (selected === "Letter") {
-        pdfFrame.src = "companydirectorypdf/CompanyDirectoryLetterSize.pdf";
-      } else if (selected === "Legal") {
-        pdfFrame.src = "companydirectorypdf/CompanyDirectoryLegalSize.pdf";
-      }
+      pdfFrame.src = this.value === "Letter"
+        ? "companydirectorypdf/CompanyDirectoryLetterSize.pdf"
+        : "companydirectorypdf/CompanyDirectoryLegalSize.pdf";
     });
 
     const pdfModal = document.getElementById('pdfModal');
     pdfModal.addEventListener('show.bs.modal', function () {
-      const paperSizeSelect = document.getElementById("paperSize");
-      const pdfFrame = document.getElementById("pdfFrame");
-
-      paperSizeSelect.value = "Letter";
-      pdfFrame.src = "companydirectorypdf/CompanyDirectoryLetterSize.pdf";
+      document.getElementById("paperSize").value = "Letter";
+      document.getElementById("pdfFrame").src = "companydirectorypdf/CompanyDirectoryLetterSize.pdf";
     });
   });
 </script>
