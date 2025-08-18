@@ -25,7 +25,7 @@ msalInstance.handleRedirectPromise()
         .then(res => res.json())
         .then(profile => {
           sessionStorage.setItem("jobTitle", profile.jobTitle || "");
-          window.location.href = "dashboard.html";
+          window.location.href = "agentlist.html";
         });
 
       }).catch(err => {
