@@ -20,7 +20,6 @@
   <style>
     tbody tr:nth-child(odd) { background-color: #f9f9f9; } 
     tbody tr:nth-child(even) { background-color: #ffffff; } 
-
   </style>
 </head>
 <body class="bg-white">
@@ -28,13 +27,13 @@
 <div id="navbarContainer"></div>
 
 <div class="container mt-5">
-  <h2 class="mb-4">KW Livign Realty Agent List</h2>
+  <h2 class="mb-4">KW Living Realty Agent List</h2>
 
   <div class="row mb-3">
-    <div class="col-md-6 mb-2">
+    <div class="col-md-5 mb-2">
       <input type="text" class="form-control" id="searchInput" placeholder="Search by name, email, mobile, type, or branch...">
     </div>
-    <div class="col-md-6 mb-2">
+    <div class="col-md-4 mb-2">
       <select id="officeFilter" class="form-select">
         <option value="">All Branches</option>
         <option>ICI</option>
@@ -44,6 +43,9 @@
         <option>YE</option>
         <option>YB</option>
       </select>
+    </div>
+    <div class="col-md-3 mb-2 text-md-end">
+      <button id="exportBtn" class="btn btn-outline-primary" title="Export the list to CSV">Export</button>
     </div>
   </div>
 
@@ -104,7 +106,7 @@
         }
       });
 
-    // Optional profile modal loader (kept, with guards)
+    // Optional profile modal loader
     fetch('profileModal.html')
       .then(res => res.text())
       .then(html => {
@@ -122,12 +124,12 @@
         document.body.appendChild(script);
       });
 
-    // ---- Firebase init (scoped) ----
+    // ---- Firebase init ----
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const fsDb = firebase.firestore();
 
     // ---- State & DOM ----
-    let pageSize = 10; // can be changed by selector if present
+    let pageSize = 10;
     let allRows = [];
     let filteredRows = [];
     let currentPage = 1;
@@ -137,7 +139,7 @@
     const $recordInfo = document.getElementById("recordInfo");
     const $search = document.getElementById("searchInput");
     const $branch = document.getElementById("officeFilter");
-    const $pageSizeSelect = document.getElementById("pageSizeSelect"); // optional
+    const $exportBtn = document.getElementById("exportBtn");
 
     // ---- Utils ----
     const fmtDate = (ts) => {
@@ -159,14 +161,40 @@
       if (digits.length === 10) {
         return `(${digits.substring(0,3)}) ${digits.substring(3,6)}-${digits.substring(6)}`;
       }
-      return num; // fallback
+      return num;
+    };
+
+    // ---- Export to CSV ----
+    const exportToCSV = () => {
+      if (!filteredRows.length) return;
+      const header = ["Agent","Mobile","Email","Join Date","Type","Branch"];
+      const rows = filteredRows.map(d => [
+        d.Agent || "",
+        formatPhone(d.Mobile) || "",
+        d.Email || "",
+        fmtDate(d.JoinDate) || "",
+        d.Type || "",
+        d.Branch || ""
+      ]);
+
+      let csvContent = header.join(",") + "\n";
+      rows.forEach(r => {
+        csvContent += r.map(x => `"${String(x).replace(/"/g,'""')}"`).join(",") + "\n";
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "agentlist.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     };
 
     // ---- Renderers ----
     const renderTable = () => {
-      if (!$tbody) return;
       $tbody.innerHTML = "";
-
       const start = (currentPage - 1) * pageSize;
       const end = start + pageSize;
       const currentPageRows = filteredRows.slice(start, end);
@@ -184,20 +212,17 @@
         $tbody.appendChild(row);
       });
 
-      if ($recordInfo) {
-        const shownFrom = filteredRows.length ? start + 1 : 0;
-        const shownTo = Math.min(end, filteredRows.length);
-        $recordInfo.textContent = `Showing ${shownFrom}-${shownTo} of ${filteredRows.length} records`;
-      }
+      const shownFrom = filteredRows.length ? start + 1 : 0;
+      const shownTo = Math.min(end, filteredRows.length);
+      $recordInfo.textContent = `Showing ${shownFrom}-${shownTo} of ${filteredRows.length} records`;
 
       renderPagination();
     };
 
     const renderPagination = () => {
-      if (!$pagination) return;
       const total = filteredRows.length;
       const pageCount = Math.max(1, Math.ceil(total / pageSize));
-      const windowSize = 7; // how many numbered buttons (with current) to show
+      const windowSize = 7;
       $pagination.innerHTML = "";
 
       const addItem = (label, page, { disabled=false, active=false } = {}) => {
@@ -213,17 +238,14 @@
         $pagination.appendChild(li);
       };
 
-      // First/Prev
       addItem("« First", 1, { disabled: currentPage === 1 });
       addItem("‹ Prev", Math.max(1, currentPage - 1), { disabled: currentPage === 1 });
 
-      // Compute ellipsed window
       const half = Math.floor((windowSize - 1) / 2);
       let start = Math.max(1, currentPage - half);
       let end = Math.min(pageCount, start + windowSize - 1);
       start = Math.max(1, Math.min(start, end - windowSize + 1));
 
-      // Leading edge
       if (start > 1) {
         addItem("1", 1, { active: currentPage === 1 });
         if (start > 2) {
@@ -234,12 +256,10 @@
         }
       }
 
-      // Middle window
       for (let p = start; p <= end; p++) {
         addItem(String(p), p, { active: p === currentPage });
       }
 
-      // Trailing edge
       if (end < pageCount) {
         if (end < pageCount - 1) {
           const ell = document.createElement("li");
@@ -250,7 +270,6 @@
         addItem(String(pageCount), pageCount, { active: currentPage === pageCount });
       }
 
-      // Next/Last
       addItem("Next ›", Math.min(pageCount, currentPage + 1), { disabled: currentPage === pageCount });
       addItem("Last »", pageCount, { disabled: currentPage === pageCount });
     };
@@ -258,46 +277,34 @@
     const applyFilters = () => {
       const q = ($search?.value || "").toLowerCase();
       const selectedBranch = $branch?.value || "";
-
       filteredRows = allRows.filter(data => {
         const hay = `${data.Agent || ""} ${data.Email || ""} ${data.Mobile || ""} ${data.Type || ""} ${data.Branch || ""}`.toLowerCase();
         const matchesText = !q || hay.includes(q);
         const matchesBranch = !selectedBranch || data.Branch === selectedBranch;
         return matchesText && matchesBranch;
       });
-
       currentPage = 1;
       renderTable();
     };
 
-    // ---- Data load (agentlist) ----
+    // ---- Data load ----
     fsDb.collection("agentlist").orderBy("Agent").get()
       .then(snapshot => {
         snapshot.forEach(doc => allRows.push(doc.data()));
         filteredRows = [...allRows];
         renderTable();
       })
-      .catch(err => {
-        console.error("Failed to load agentlist:", err);
-      });
+      .catch(err => console.error("Failed to load agentlist:", err));
 
     // ---- Listeners ----
     $search?.addEventListener("input", applyFilters);
     $branch?.addEventListener("change", applyFilters);
-
-    if ($pageSizeSelect) {
-      $pageSizeSelect.addEventListener("change", () => {
-        pageSize = parseInt($pageSizeSelect.value, 10) || 10;
-        currentPage = 1;
-        renderTable();
-      });
-      $pageSizeSelect.value = String(pageSize);
-    }
+    $exportBtn?.addEventListener("click", exportToCSV);
   });
 })();
 </script>
 
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
