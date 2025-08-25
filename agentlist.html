@@ -16,7 +16,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
   <!-- Your configs -->
-  <script src="https://alcdn.msauth.net/browser/2.31.0/js/msal-browser.min.js"></script>
   <script src="msalconfig.js"></script>
   <script src="firebaseConfig.js"></script>
 
@@ -109,9 +108,12 @@
           const msalInstance = new msal.PublicClientApplication(msalConfig);
           const signOutLink = document.getElementById("signOutLink");
           if (signOutLink) {
-            signOutLink.addEventListener("click", () => {
-              sessionStorage.clear();
-              msalInstance.logoutRedirect();
+            signOutLink.addEventListener("click", (e) => {
+              e.preventDefault();               // <- 重要：阻止 <a href="#"> 預設行為
+              try { sessionStorage.clear(); } catch (_) {}
+              msalInstance.logoutRedirect({
+                postLogoutRedirectUri: window.location.origin + "/index.html"
+              });
             });
           }
         }
