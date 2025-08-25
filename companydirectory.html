@@ -101,6 +101,54 @@
 
 <script>
   window.addEventListener('DOMContentLoaded', () => {
+
+    // ---- Session / navbar ----
+    const userInfoRaw = sessionStorage.getItem("user");
+    const userInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
+    if (!userInfo) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    fetch('navbar.html')
+      .then(res => res.text())
+      .then(html => {
+        const nav = document.getElementById("navbarContainer");
+        if (nav) nav.innerHTML = html;
+      })
+      .then(() => {
+        const nameEl = document.getElementById("userName");
+        if (nameEl) nameEl.textContent = userInfo?.name || userInfo?.username || "User";
+        if (window.msalConfig && window.msal) {
+          const msalInstance = new msal.PublicClientApplication(msalConfig);
+          const signOutLink = document.getElementById("signOutLink");
+          if (signOutLink) {
+            signOutLink.addEventListener("click", () => {
+              sessionStorage.clear();
+              msalInstance.logoutRedirect();
+            });
+          }
+        }
+      });
+
+    // Optional profile modal loader
+    fetch('profileModal.html')
+      .then(res => res.text())
+      .then(html => {
+        const modalWrap = document.getElementById("modalContainer");
+        if (modalWrap) modalWrap.innerHTML = html;
+      })
+      .then(() => {
+        const script = document.createElement('script');
+        script.src = 'profileHandler.js';
+        script.onload = () => {
+          if (typeof loadUserProfile === 'function') {
+            loadUserProfile(userInfo.token);
+          }
+        };
+        document.body.appendChild(script);
+      });
+
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     let allRows = [];
