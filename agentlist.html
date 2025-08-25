@@ -307,7 +307,7 @@
           ell.innerHTML = `<span class="page-link">…</span>`;
           $pagination.appendChild(ell);
         }
-        addItem(String(pageCount), pageCount, { active: p === currentPage });
+        addItem(String(pageCount), pageCount, { active: currentPage === pageCount });
       }
 
       addItem("Next ›", Math.min(pageCount, currentPage + 1), { disabled: currentPage === pageCount });
